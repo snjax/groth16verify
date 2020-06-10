@@ -12,21 +12,22 @@ name = "zwaves_jni"
 name="show_test_vectors"
 
 [dependencies]
-pairing = {version = "0.15.1", git = "https://github.com/snjax/pairing", branch = "feature/fastsubgroupchecks", rev = "2b73e0e92fc0a1849df600372aa68a507bfd4562" }
-#pairing = {path = "../pairing" }
-ff = {version = "0.5.2", features = ["derive"] }
-group = "0.2"
 num = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 base64 = "0.11.0"
 jni = "0.14.0"
 byteorder = "1"
-rand_xorshift = "0.2"
-rand_core = "0.5"
+rand = "0.4"
+[dependencies.pairing]
+version = "=0.18"
+package = "pairing_ce"
 
-[dev-dependencies]
-rand_xorshift = "0.2"
-rand_core = "0.5"
+[dependencies.ff]
+version = "=0.7"
+features = ["derive"]
+package = "ff_ce"
+
+
 
 [features]
 default = []

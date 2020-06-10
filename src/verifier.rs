@@ -1,10 +1,8 @@
-use pairing::{Engine, PairingCurveAffine};
-use group::{CurveProjective, CurveAffine, EncodedPoint};
-use ff::{PrimeField, Field};
+use ff::{Field, PrimeField};
+use pairing::{CurveAffine, CurveProjective, EncodedPoint, Engine};
 
-use std::io::{Read, Write};
 use std::io;
-
+use std::io::{Read, Write};
 
 #[derive(Debug)]
 pub enum SynthesisError {
@@ -23,34 +21,24 @@ pub enum SynthesisError {
     /// During verification, our verifying key was malformed.
     MalformedVerifyingKey,
     /// During CRS generation, we observed an unconstrained auxillary variable
-    UnconstrainedVariable
+    UnconstrainedVariable,
 }
-
-
 
 #[derive(Clone)]
 pub struct Proof<E: Engine> {
     pub a: E::G1Affine,
     pub b: E::G2Affine,
-    pub c: E::G1Affine
+    pub c: E::G1Affine,
 }
-
-
 
 impl<E: Engine> PartialEq for Proof<E> {
     fn eq(&self, other: &Self) -> bool {
-        self.a == other.a &&
-        self.b == other.b &&
-        self.c == other.c
+        self.a == other.a && self.b == other.b && self.c == other.c
     }
 }
 
 impl<E: Engine> Proof<E> {
-    pub fn write<W: Write>(
-        &self,
-        mut writer: W
-    ) -> io::Result<()>
-    {
+    pub fn write<W: Write>(&self, mut writer: W) -> io::Result<()> {
         writer.write_all(self.a.into_compressed().as_ref())?;
         writer.write_all(self.b.into_compressed().as_ref())?;
         writer.write_all(self.c.into_compressed().as_ref())?;
@@ -58,52 +46,58 @@ impl<E: Engine> Proof<E> {
         Ok(())
     }
 
-    pub fn read<R: Read>(
-        mut reader: R
-    ) -> io::Result<Self>
-    {
+    pub fn read<R: Read>(mut reader: R) -> io::Result<Self> {
         let mut g1_repr = <E::G1Affine as CurveAffine>::Compressed::empty();
         let mut g2_repr = <E::G2Affine as CurveAffine>::Compressed::empty();
 
         reader.read_exact(g1_repr.as_mut())?;
         let a = g1_repr
-                .into_affine()
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-                .and_then(|e| if e.is_zero() {
-                    Err(io::Error::new(io::ErrorKind::InvalidData, "point at infinity"))
+            .into_affine()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+            .and_then(|e| {
+                if e.is_zero() {
+                    Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "point at infinity",
+                    ))
                 } else {
                     Ok(e)
-                })?;
+                }
+            })?;
 
         reader.read_exact(g2_repr.as_mut())?;
         let b = g2_repr
-                .into_affine()
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-                .and_then(|e| if e.is_zero() {
-                    Err(io::Error::new(io::ErrorKind::InvalidData, "point at infinity"))
+            .into_affine()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+            .and_then(|e| {
+                if e.is_zero() {
+                    Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "point at infinity",
+                    ))
                 } else {
                     Ok(e)
-                })?;
+                }
+            })?;
 
         reader.read_exact(g1_repr.as_mut())?;
         let c = g1_repr
-                .into_affine()
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-                .and_then(|e| if e.is_zero() {
-                    Err(io::Error::new(io::ErrorKind::InvalidData, "point at infinity"))
+            .into_affine()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+            .and_then(|e| {
+                if e.is_zero() {
+                    Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "point at infinity",
+                    ))
                 } else {
                     Ok(e)
-                })?;
+                }
+            })?;
 
-        Ok(Proof {
-            a: a,
-            b: b,
-            c: c
-        })
+        Ok(Proof { a: a, b: b, c: c })
     }
 }
-
-
 
 #[derive(Clone)]
 pub struct TruncatedVerifyingKey<E: Engine> {
@@ -111,16 +105,11 @@ pub struct TruncatedVerifyingKey<E: Engine> {
     pub beta_g2: E::G2Affine,
     pub gamma_g2: E::G2Affine,
     pub delta_g2: E::G2Affine,
-    pub ic: Vec<E::G1Affine>
+    pub ic: Vec<E::G1Affine>,
 }
 
-
 impl<E: Engine> TruncatedVerifyingKey<E> {
-    pub fn write<W: Write>(
-        &self,
-        mut writer: W
-    ) -> io::Result<()>
-    {
+    pub fn write<W: Write>(&self, mut writer: W) -> io::Result<()> {
         writer.write_all(self.alpha_g1.into_compressed().as_ref())?;
         writer.write_all(self.beta_g2.into_compressed().as_ref())?;
         writer.write_all(self.gamma_g2.into_compressed().as_ref())?;
@@ -131,64 +120,86 @@ impl<E: Engine> TruncatedVerifyingKey<E> {
         Ok(())
     }
 
-    pub fn read<R: Read>(
-        mut reader: R
-    ) -> io::Result<Self>
-    {
+    pub fn read<R: Read>(mut reader: R) -> io::Result<Self> {
         let mut g1_repr = <E::G1Affine as CurveAffine>::Compressed::empty();
         let mut g2_repr = <E::G2Affine as CurveAffine>::Compressed::empty();
 
         reader.read_exact(g1_repr.as_mut())?;
         let alpha_g1 = g1_repr
-                .into_affine_unchecked()
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-                .and_then(|e| if e.is_zero() {
-                    Err(io::Error::new(io::ErrorKind::InvalidData, "point at infinity"))
+            .into_affine_unchecked()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+            .and_then(|e| {
+                if e.is_zero() {
+                    Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "point at infinity",
+                    ))
                 } else {
                     Ok(e)
-                })?;
+                }
+            })?;
 
         reader.read_exact(g2_repr.as_mut())?;
         let beta_g2 = g2_repr
-                .into_affine_unchecked()
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-                .and_then(|e| if e.is_zero() {
-                    Err(io::Error::new(io::ErrorKind::InvalidData, "point at infinity"))
+            .into_affine_unchecked()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+            .and_then(|e| {
+                if e.is_zero() {
+                    Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "point at infinity",
+                    ))
                 } else {
                     Ok(e)
-                })?;
+                }
+            })?;
 
         reader.read_exact(g2_repr.as_mut())?;
         let gamma_g2 = g2_repr
-                .into_affine_unchecked()
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-                .and_then(|e| if e.is_zero() {
-                    Err(io::Error::new(io::ErrorKind::InvalidData, "point at infinity"))
+            .into_affine_unchecked()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+            .and_then(|e| {
+                if e.is_zero() {
+                    Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "point at infinity",
+                    ))
                 } else {
                     Ok(e)
-                })?;
+                }
+            })?;
 
         reader.read_exact(g2_repr.as_mut())?;
         let delta_g2 = g2_repr
-                .into_affine_unchecked()
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-                .and_then(|e| if e.is_zero() {
-                    Err(io::Error::new(io::ErrorKind::InvalidData, "point at infinity"))
+            .into_affine_unchecked()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+            .and_then(|e| {
+                if e.is_zero() {
+                    Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "point at infinity",
+                    ))
                 } else {
                     Ok(e)
-                })?;
+                }
+            })?;
 
         let mut ic = vec![];
 
         while reader.read_exact(g1_repr.as_mut()).is_ok() {
             let g1 = g1_repr
-                    .into_affine_unchecked()
-                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-                    .and_then(|e| if e.is_zero() {
-                        Err(io::Error::new(io::ErrorKind::InvalidData, "point at infinity"))
+                .into_affine_unchecked()
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+                .and_then(|e| {
+                    if e.is_zero() {
+                        Err(io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            "point at infinity",
+                        ))
                     } else {
                         Ok(e)
-                    })?;
+                    }
+                })?;
             ic.push(g1);
         }
 
@@ -197,18 +208,16 @@ impl<E: Engine> TruncatedVerifyingKey<E> {
             beta_g2: beta_g2,
             gamma_g2: gamma_g2,
             delta_g2: delta_g2,
-            ic: ic.clone()
+            ic: ic.clone(),
         })
     }
 }
 
-
 pub fn verify_proof<'a, E: Engine>(
     tvk: &'a TruncatedVerifyingKey<E>,
     proof: &Proof<E>,
-    public_inputs: &[E::Fr]
-) -> Result<bool, SynthesisError>
-{
+    public_inputs: &[E::Fr],
+) -> Result<bool, SynthesisError> {
     if (public_inputs.len() + 1) != tvk.ic.len() {
         return Err(SynthesisError::MalformedVerifyingKey);
     }
@@ -227,12 +236,12 @@ pub fn verify_proof<'a, E: Engine>(
     let mut neg_a = proof.a.clone();
     neg_a.negate();
 
-    Ok(E::final_exponentiation(
-        &E::miller_loop(&[
-            (&neg_a.prepare(), &proof.b.prepare()),
-            (&tvk.alpha_g1.prepare(), &tvk.beta_g2.prepare()),
-            (&acc.into_affine().prepare(), &tvk.gamma_g2.prepare()),
-            (&proof.c.prepare(), &tvk.delta_g2.prepare())
-        ])
-    ).unwrap() == E::Fqk::one())
+    Ok(E::final_exponentiation(&E::miller_loop(&[
+        (&neg_a.prepare(), &proof.b.prepare()),
+        (&tvk.alpha_g1.prepare(), &tvk.beta_g2.prepare()),
+        (&acc.into_affine().prepare(), &tvk.gamma_g2.prepare()),
+        (&proof.c.prepare(), &tvk.delta_g2.prepare()),
+    ]))
+    .unwrap()
+        == E::Fqk::one())
 }
