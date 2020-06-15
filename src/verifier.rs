@@ -222,6 +222,10 @@ pub fn verify_proof<'a, E: Engine>(
         return Err(SynthesisError::MalformedVerifyingKey);
     }
 
+    if !proof.b.mul(E::Fr::char()).is_zero() {
+        return Ok(false);
+    }
+
     let mut acc = tvk.ic[0].into_projective();
 
     for (i, b) in public_inputs.iter().zip(tvk.ic.iter().skip(1)) {
